@@ -16,22 +16,8 @@ Hooking-up with the Arduino
 | AGND            | Analog Gnd           |  -               |
 *************************************************************/
 
-#include "Protocentral_ADS1220.h"
 #include <SPI.h>
-#include "filter.h"
-
-#define PGA 1                 // Programmable Gain = 1
-#define VREF 2.048            // Internal reference of 2.048V
-#define VFSR VREF/PGA             
-#define FSR (((long int)1<<23)-1)  
-
-volatile byte MSB;
-volatile byte data;
-volatile byte LSB;
-//volatile char SPI_RX_Buff[3];
-volatile byte *SPI_RX_Buff_Ptr;
-
-Protocentral_ADS1220 ADS1220;
+#include "Dac.h"
 
   float sum;
   float meanVout;
@@ -39,114 +25,48 @@ Protocentral_ADS1220 ADS1220;
   int samplesPr = 10;
   float average;
   float lastAverage;
+  float lastRaw;
   
 void setup()
 {
-  pinMode(10, OUTPUT);
-  pinMode(ADS1220_DRDY_PIN, INPUT);
-  
-  ADS1220.begin();
-
-    ADS1220.set_data_rate(DR_20SPS);
-    ADS1220.set_pga_gain(PGA_GAIN_1);
-    ADS1220.PGA_OFF();
-
+  DAC.init();
 }
-
-
 
 void loop()
 {
-  long int bit32;
-  long int bit24;
-  byte *config_reg;
 
-  
-  //if((digitalRead(ADS1220_DRDY_PIN)) == LOW)             //        Wait for DRDY to transition low
-  { 
-    SPI_RX_Buff_Ptr = ADS1220.Read_Data();
-  }
-
-  if(ADS1220.NewDataAvailable = true)
-  {
-  ADS1220.NewDataAvailable = false;
-
-  MSB = SPI_RX_Buff_Ptr[0];    
-  data = SPI_RX_Buff_Ptr[1];
-  LSB = SPI_RX_Buff_Ptr[2];
-
-  bit24 = MSB;
-  bit24 = (bit24 << 8) | data;
-  bit24 = (bit24 << 8) | LSB;                                 // Converting 3 bytes to a 24 bit int
-    
-  /*if (MSB & 0x80)
-    bit32 = (bit24 | 0xFF000000);             // Converting 24 bit two's complement to 32 bit two's complement
-  else    
-    bit32 = bit24;
-  */
-  
-  bit24= ( bit24 << 8 );
-  bit32 = ( bit24 >> 8 );                      // Converting 24 bit two's complement to 32 bit two's complement
-  
-  float Vout = (float)((bit32*VFSR*1000)/FSR);     //In  mV
-
-  delay(75);
-
-  average = FILTER.smoothing(average, samplesPr, Vout);
-
-
-  sum = sum + Vout;
-  if (++measurements == samplesPr) {
-    measurements = 0;
-    meanVout = sum / samplesPr;
-    meanVout -= 0.010; //offset
-    sum = 0;
-    //Serial.print("V = ");  
-    //Serial.print(meanVout, 3);
-    //Serial.print(" mV");  
-    Serial.print(" average:");
-    Serial.print(average, 3);
-    Serial.print(" mV");  
-    Serial.print("(");  
-    Serial.print(( average - lastAverage)*1000, 0);  
-    Serial.println("uV)");  
-
-
-    lastAverage = average;
-
-  }
-  //Serial.print("Vout in mV : ");  
-   //Serial.print(Vout, 3);
-   //Serial.print(" average:");
-   //Serial.print(average, 4);
-
-   //Serial.print("  32bit HEX : ");
-  // Serial.println(bit32,HEX);
-  
- /* 
-  config_reg = ADS1220.get_config_reg();
- 
-  Serial.print("Config Reg : ");
-  Serial.print(config_reg[0],HEX);
-  Serial.print(" ");  
-  Serial.print(config_reg[1],HEX);
-  Serial.print(" ");
-  Serial.print(config_reg[2],HEX);
-  Serial.print(" ");
-  Serial.println(config_reg[3],HEX);
-  
-  //ADS1220.set_data_rate(DR_1000SPS);
-  //ADS1220.set_data_rate(DR_330SPS);
-  //ADS1220.set_pga_gain(PGA_GAIN_32);
- 
-  Serial.print(MSB,HEX);
-  Serial.print(data,HEX);
-  Serial.print(LSB,HEX);
-  
-  Serial.print(vout);
-  Serial.print("    ");
-  Serial.print(bit32,HEX);
-  */
+  if(DAC.checkDataAvilable() == true) {
+    float Vout = DAC.convertToMv();
+    delay(75);
+    average = DAC.smoothing(average, 2, Vout);
+    sum = sum + Vout;
+    if (++measurements == 2) {
+    //if (++measurements == samplesPr) {
+      measurements = 0;
+      meanVout = sum / samplesPr;
+      meanVout -= 0.010; //offset
+      sum = 0;
+      Serial.print("Raw:");  
+      Serial.print(Vout, 3);
+      //Serial.print(meanVout, 3);
+      Serial.print(" mV");  
+      Serial.print("(");  
+      Serial.print(( Vout - lastRaw)*1000, 0);  
+      Serial.print(" mV), average:");
+      Serial.print(average, 3);
+      Serial.print(" mV");  
+      Serial.print("(");  
+      Serial.print(( average - lastAverage)*1000, 0);  
+      Serial.println("uV)");  
+      lastAverage = average;
+      lastRaw = Vout;
+    }
+    //Serial.print("Vout in mV : ");  
+    //Serial.print(Vout, 3);
+    //Serial.print(" average:");
+    //Serial.print(average, 4);
+    //Serial.print("  32bit HEX : ");
+    // Serial.println(bit32,HEX);
   }
 }
  
