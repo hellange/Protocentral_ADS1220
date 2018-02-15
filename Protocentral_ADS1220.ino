@@ -18,6 +18,7 @@ Hooking-up with the Arduino
 
 #include "Protocentral_ADS1220.h"
 #include <SPI.h>
+#include "filter.h"
 
 #define PGA 1                 // Programmable Gain = 1
 #define VREF 2.048            // Internal reference of 2.048V
@@ -32,19 +33,34 @@ volatile byte *SPI_RX_Buff_Ptr;
 
 Protocentral_ADS1220 ADS1220;
 
+  float sum;
+  float meanVout;
+  int measurements;
+  int samplesPr = 10;
+  float average;
+  float lastAverage;
+  
 void setup()
 {
-  pinMode(ADS1220_CS_PIN, OUTPUT);
+  pinMode(10, OUTPUT);
   pinMode(ADS1220_DRDY_PIN, INPUT);
   
   ADS1220.begin();
+
+    ADS1220.set_data_rate(DR_20SPS);
+    ADS1220.set_pga_gain(PGA_GAIN_1);
+    ADS1220.PGA_OFF();
+
 }
- 
+
+
+
 void loop()
 {
   long int bit32;
   long int bit24;
   byte *config_reg;
+
   
   //if((digitalRead(ADS1220_DRDY_PIN)) == LOW)             //        Wait for DRDY to transition low
   { 
@@ -73,13 +89,39 @@ void loop()
   bit32 = ( bit24 >> 8 );                      // Converting 24 bit two's complement to 32 bit two's complement
   
   float Vout = (float)((bit32*VFSR*1000)/FSR);     //In  mV
-  
-  delay(300);
-  
-  Serial.print("Vout in mV : ");  
-  Serial.print(Vout);
-  Serial.print("  32bit HEX : ");
-  Serial.println(bit32,HEX);
+
+  delay(75);
+
+  average = FILTER.smoothing(average, samplesPr, Vout);
+
+
+  sum = sum + Vout;
+  if (++measurements == samplesPr) {
+    measurements = 0;
+    meanVout = sum / samplesPr;
+    meanVout -= 0.010; //offset
+    sum = 0;
+    //Serial.print("V = ");  
+    //Serial.print(meanVout, 3);
+    //Serial.print(" mV");  
+    Serial.print(" average:");
+    Serial.print(average, 3);
+    Serial.print(" mV");  
+    Serial.print("(");  
+    Serial.print(( average - lastAverage)*1000, 0);  
+    Serial.println("uV)");  
+
+
+    lastAverage = average;
+
+  }
+  //Serial.print("Vout in mV : ");  
+   //Serial.print(Vout, 3);
+   //Serial.print(" average:");
+   //Serial.print(average, 4);
+
+   //Serial.print("  32bit HEX : ");
+  // Serial.println(bit32,HEX);
   
  /* 
   config_reg = ADS1220.get_config_reg();
