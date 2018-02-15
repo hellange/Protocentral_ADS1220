@@ -33,7 +33,6 @@ void Protocentral_ADS1220::begin()
 {
   static char data;
 
-  Serial.begin(9600);	        	//115200 57600
   SPI.begin();                           // wake up the SPI bus.
   //SPI.setBitOrder(MSBFIRST);
   SPI.setDataMode(SPI_MODE1);

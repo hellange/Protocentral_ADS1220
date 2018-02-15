@@ -19,16 +19,13 @@ Hooking-up with the Arduino
 #include <SPI.h>
 #include "Dac.h"
 
-  float sum;
-  float meanVout;
-  int measurements;
-  int samplesPr = 10;
-  float average;
+  float avgVout;
   float lastAverage;
   float lastRaw;
-  
+  int smoothingSamples = 5;
 void setup()
 {
+    Serial.begin(115200);            //115200 57600
   DAC.init();
 }
 
@@ -38,33 +35,25 @@ void loop()
   if(DAC.checkDataAvilable() == true) {
     float Vout = DAC.convertToMv();
     delay(75);
-    average = DAC.smoothing(average, 2, Vout);
-    sum = sum + Vout;
-    if (++measurements == 2) {
-    //if (++measurements == samplesPr) {
-      measurements = 0;
-      meanVout = sum / samplesPr;
-      meanVout -= 0.010; //offset
-      sum = 0;
-      Serial.print("Raw:");  
-      Serial.print(Vout, 3);
-      //Serial.print(meanVout, 3);
-      Serial.print(" mV");  
-      Serial.print("(");  
-      Serial.print(( Vout - lastRaw)*1000, 0);  
-      Serial.print(" mV), average:");
-      Serial.print(average, 3);
-      Serial.print(" mV");  
-      Serial.print("(");  
-      Serial.print(( average - lastAverage)*1000, 0);  
-      Serial.println("uV)");  
-      lastAverage = average;
-      lastRaw = Vout;
-    }
-    //Serial.print("Vout in mV : ");  
+    avgVout = DAC.smoothing(avgVout, smoothingSamples, Vout);
+    Serial.print("Raw:");  
+    Serial.print(Vout, 3);
+    //Serial.print(meanVout, 3);
+    Serial.print(" mV");  
+    Serial.print("(");  
+    Serial.print(( Vout - lastRaw)*1000, 0);  
+    Serial.print(" mV), average:");
+    Serial.print(avgVout, 3);
+    Serial.print(" mV");  
+    Serial.print("(");  
+    Serial.print(( avgVout - lastAverage)*1000, 0);  
+    Serial.println("uV)");  
+    lastAverage = avgVout;
+    lastRaw = Vout;
+     //Serial.print("Vout in mV : ");  
     //Serial.print(Vout, 3);
     //Serial.print(" average:");
-    //Serial.print(average, 4);
+    //Serial.print(avgVout, 4);
     //Serial.print("  32bit HEX : ");
     // Serial.println(bit32,HEX);
   }
