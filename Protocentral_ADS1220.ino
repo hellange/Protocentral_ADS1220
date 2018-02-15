@@ -34,19 +34,20 @@ void loop()
 
   if(DAC.checkDataAvilable() == true) {
     float Vout = DAC.convertToMv();
+    //delay(75);
     delay(75);
     avgVout = DAC.smoothing(avgVout, smoothingSamples, Vout);
-    Serial.print("Raw:");  
-    Serial.print(Vout, 3);
-    //Serial.print(meanVout, 3);
-    Serial.print(" mV");  
-    Serial.print("(");  
-    Serial.print(( Vout - lastRaw)*1000, 0);  
-    Serial.print(" mV), average:");
+//    Serial.print("Raw:");  
+//    Serial.print(Vout, 3);
+//    Serial.print(" mV");  
+//    Serial.print("(");  
+//    Serial.print(( Vout - lastRaw)*1000, 1);  
+//    Serial.print(" uV),"
+    Serial.print("average:");
     Serial.print(avgVout, 3);
     Serial.print(" mV");  
     Serial.print("(");  
-    Serial.print(( avgVout - lastAverage)*1000, 0);  
+    Serial.print(( avgVout - lastAverage)*1000, 1);  
     Serial.println("uV)");  
     lastAverage = avgVout;
     lastRaw = Vout;
